@@ -1,5 +1,8 @@
 import os
 
+from gkterm_help import vlan_config_help
+from gkterm_help import impl_nat
+
 
 class computer_ip:
     def __init__(self, workbench, computer_name, eth_number):
@@ -15,15 +18,21 @@ class computer_ip:
         print("Created:", end=" ")
         self.info()
 
-    def config_ip(self, debug):
+     def config_ip(self, debug):
         eth = "eth" + str(self.eth_number)
 
         if debug == 'y':
             print("#tux: ifconfig", eth, "up")
             print("#tux: ifconfig", eth, self.ip_addr + "/24")
         else:
-            os.system("ifconfig", eth, "up")
-            os.system("ifconfig", eth, self.ip_addr + "/24")
+            aux_str = "ifconfig " + eth + " up"
+            os.system(aux_str)
+            aux_str = "ifconfig " + eth + " " + self.ip_addr + "/24"
+            os.system(aux_str)
+
+    def add_route(self, switch_ip):
+        print("route add - net", switch_ip, "gw", self.ip_addr)
+        print("route - n")
 
     def getName(self):
         return str(self.computer_name)
@@ -45,22 +54,35 @@ def tux_wait():
     input()
 
 
+def go_to_tux(tux_name):
+    print("go to ", tux_name)
+
+
 def ask_debug():
     print("\nDebug mode:", end=" ")
     print("y/n?\n")
     return input()
 
 
+def send_command(command, debug):
+    auxstr = "debug_terminal# " + command
+    if debug == 'y':
+        print(auxstr)
+    else:
+        os.system(auxstr)
+
+
 def lab3():
     print("Welcome to lab3! \n")
 
     workbench = 6
+    switch_ip = "172.16." + str(workbench) + ".0/24"
     router_eth0 = "172.16." + str(workbench) + "1.254"
     router_eth1 = "172.16.1.29"
 
     computers_name_list = ["Computer L",
                            "Computer M", "Computer M", "Computer R"]
-    computer_tux_number = [2, 3, 3, 4]
+    computer_tux_number = [3, 4, 4, 2]
     __computers_ip_eth = [0, 0, 1, 1]
     __computer_last_8 = [1, 254, 253, 1]
 
@@ -95,17 +117,32 @@ def lab3():
         ###################################
         debug = ask_debug()
         print("Go to tux4")
-        print("Wating...")
-        input()
-        networking_restart(debug)
+        tux_wait()
 
+        n_step = 2
+        print("passo", str(n_step))
+        networking_restart(debug)
         left_tux_0.config_ip(debug)
+
+        print("go to tux4")
+        tux_wait()
+        n_step = 4
+        print("passo", str(n_step))
+        send_command(
+            "echo 0 > / proc / sys / net / ipv4 / icmp_echo_ignore_broadcasts", debug)
+        n_step = 5
+        print("passo", str(n_step))
+        print("tux -> switch")
+        left_tux_0.add_route(switch_ip)
+
     elif(name == "Computer M"):
         print("mid_tux!")
         mid_tux_0 = current_ip_list[0]
         mid_tux_1 = current_ip_list[1]
         ###################################
         debug = ask_debug()
+        n_step = 1
+        print("passo", str(n_step))
         print("\n1 Transforming mid_tux into a router")
         networking_restart(debug)
         mid_tux_0.config_ip(debug)
@@ -115,95 +152,77 @@ def lab3():
             print("\n ifconfig")
         else:
             os.system("ifconfig")
-        print("\n3. Reconfigure tuxy1 and tuxy2 so that each of them can reach the other")
-        print("Go to tux3")
-        print("Go to tux2")
+
+        print(
+            "\nReconfigure left_tux and right_tux so that each of them can reach the other")
+        n_step = 2
+        print("passo", str(n_step))
+        print("Go to left_tux")
+        print("Go to mid_tux")
         tux_wait()
+
+        n_step = 3
+        print("passo", str(n_step))
+        print("\nConfiguring vlan networks in the router")
+        vlan_config_help(str(workbench*10 + 0), 0)
+        vlan_config_help(str(workbench*10 + 1), 1)
+
+        n_step = 4
+        print("passo", str(n_step))
+
+        send_command(
+            "echo 1 > / proc / sys / net / ipv4 / ip_forward", debug)
+        send_command(
+            "echo 0 > / proc / sys / net / ipv4 / icmp_echo_ignore_broadcasts", debug)
+
+        print("Go to left_tux")
+        print("Go to right_tux")
+        n_step = 5
+        print("passo", str(n_step))
+        tux_wait()
+        #######------------------------###############
 
     elif(name == "Computer R"):
         print("right_tux!")
         right_tux_1 = current_ip_list[0]
         ###################################
         debug = ask_debug()
-        print("Go to tux4")
-        print("Wating...")
-        input()
-        networking_restart()
+        print("Go to mid tux:")
+        tux_wait()
+
+        n_step = 2
+        print("passo", str(n_step))
+        networking_restart(debug)
         right_tux_1.config_ip()
+        print("go to mid_tux")
+        tux_wait()
+
+        n_step = 4
+        print("passo", str(n_step))
+        send_command(
+            "echo 0 > / proc / sys / net / ipv4 / icmp_echo_ignore_broadcasts", debug)
+
+        n_step = 5
+        print("passo", str(n_step))
+        print("tux -> switch")
+        left_tux_0.add_route(switch_ip)
+
     else:
         print("Error")
+
+    return debug
 
 
 if __name__ == "__main__":
     lab3()
-# (no tux42)
-# route add - net eth0_24_mask gw computer_2_eth1_ip
-# ping computer_1_eth0_ip
-
-# (no tux43)
-# ping 172.16.41.1
-# route add default gw 172.16.40.254
-
-# (no tux42)
-# route add - net 172.16.1.0/24 gw router_eth0
-# route add default gw router_eth0
-
-# (no tux44)
-# route add - net 172.16.1.0/24 gw router_eth0
-# route add default gw router_eth0
-
-# route -n
-
-# def wireshark():
-#     print("Open whireshark in tux3")
-#     input()
-#     print("ping " + computer_2_eth0_ip)
-#     print("ping " + computer_2_eth1_ip)
-#     print("ping " + tux2_eth1_ip)
-#     print("ping " + router_eth0)
-#     print("ping " + router_eth1)
-
-# (no tux42)
-# echo 0 > / proc / sys / net / ipv4 / conf / eth0 / accept_redirects
-# echo 0 > / proc / sys / net / ipv4 / conf / all / accept_redirects
-
-# route -n
-# route del - net eth0_24_mask gw 172.16.41.253
-# ping computer_1_eth0_ip # eth0 tux23
-
-# ping computer_1_eth0_ip # eth0 tux23 (fazer no wireshark)
-# traceroute computer_1_eth0_ip
-
-# route add - net eth0_24_mask gw 172.16.41.253
-# traceroute 172.16.20.1
-
-# route -n
-# route del - net eth0_24_mask gw 172.16.41.253
-#     print("")
-
-#     print("echo 1 > / proc / sys / net / ipv4 / conf / eth0 / accept_redirects")
-#     print("echo 1 > / proc / sys / net / ipv4 / conf / all / accept_redirects")
-
-
-# configure terminal
-# interface fastethernet 0/x (número da porta)
-# switchport mode access
-# switchport access vlan 40
-# end
-# show running-config interface fastethernet 0/1
-# show interfaces fastethernet 0/1 switchport
-
-# (na vlan41 fica o tux44,tux42 e o router)
-
-# configure terminal
-# vlan 41
-# end
-# show vlan id 41
-
-# configure terminal
-# interface fastethernet 0/x (número da porta)
-# switchport mode access
-# switchport access vlan 41
-# end
-# show running-config interface fastethernet 0/x
-# show interfaces fastethernet 0/x switchport
+    debug = ask_debug()
+    impl_nat()
+    send_command(
+        "search netlab.fe.up.pt nameserver 172.16.1.2' > /etc/resolv.conf", debug)
+    print()
+    print("lab6")
+    go_to_tux("tux_3")
+    print("executar applicação")
+    print("(começar wireshark)")
+    send_command("gcc ", debug)
+    send_command("./ ", debug)
