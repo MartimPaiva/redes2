@@ -1,0 +1,146 @@
+Exp2: duas LAN's virtuais num switch
+
+(ligar os cabos dos tuxs às portas correspondentes)
+
+(no tux23)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.1/24
+ifconfig eth0
+
+(no tux24)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.254/24
+ifconfig eth0
+
+(no tux22)
+ifconfig eth0 up
+ifconfig eth0 172.16.41.1/24
+ifconfig eth0
+
+-> configurar VLANS
+
+configure terminal
+vlan 40
+end
+show vlan id 40
+
+configure terminal
+interface fastethernet 0/x (x: numero da porta)
+switchport mode access
+switchport access vlan 40
+end
+show running - config interface fastethernet 0/x
+show interfaces fastethernet 0/x switchport
+
+
+configure terminal
+vlan 41
+end
+show vlan id 41
+
+configure terminal
+interface fastethernet 0/x (x: numero da porta)
+switchport mode access
+switchport access vlan 41
+end
+show running - config interface fastethernet 0/x
+show interfaces fastethernet 0/x switchport
+
+fazer pings
+
+
+
+
+
+
+
+
+
+Exp3: configurar um router em Linux
+
+(ligar os tuxs às portas correspondentes)
+
+(no tux43)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.1/24
+ifconfig eth0
+
+(no tux24)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.254/24
+ifconfig eth0
+
+ifconfig eth1 up
+ifconfig eth1 172.16.41.253/24
+ifconfig eth1
+
+(no tux22)
+ifconfig eth0 up
+ifconfig eth0 172.16.41.1/24
+ifconfig eth0
+
+-> configurar VLANS
+
+configure terminal
+vlan 40
+end
+show vlan id 40
+
+configure terminal
+interface fastethernet 0/x (x: numero da porta)
+switchport mode access
+switchport access vlan 40
+end
+show running - config interface fastethernet 0/x
+show interfaces fastethernet 0/x switchport
+
+
+configure terminal
+vlan 41
+end
+show vlan id 41
+
+configure terminal
+interface fastethernet 0/x (x: numero da porta)
+switchport mode access
+switchport access vlan 41
+end
+show running - config interface fastethernet 0/x
+show interfaces fastethernet 0/x switchport
+
+(no tux44)
+echo 1 > / proc / sys / net / ipv4 / ip_forward
+echo 0 > / proc / sys / net / ipv4 / icmp_echo_ignore_broadcasts
+
+(no tux43)
+route add - net 172.16.41.0/24 gw 172.16.40.254
+
+(no tux42)
+route add - net 172.16.40.0/24 gw 172.16.41.253
+ping 172.16.40.1
+
+(no tux43)
+ping 172.16.41.1
+(ligar wireshark)
+ping 172.16.40.254
+ping 172.16.41.253
+ping 172.16.41.1
+(parar captura)
+
+
+(no tux44)
+(ligar 2 wireshark, um para eth0 e outro para eth1)
+ping 172.16.41.1
+ping 172.16.40.1
+
+arp -a               ( verificar quais os IPs que se podem apagar )
+arp -d 172.16.40.254 ( um dos IPs , tem de ser feito com todosos IPs de cima )
+arp -a               ( tem de retornar nada )
+
+(no tux43)
+ping 172.16.41.1
+
+(no tux44)
+(parar a captura)
+
+

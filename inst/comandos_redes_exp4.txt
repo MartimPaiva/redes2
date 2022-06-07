@@ -1,0 +1,186 @@
+Exp4: configurar um router e implementar NAT
+
+---> configurar o router sem NAT
+
+(no gtkterm)
+
+-> interface de rede
+ 
+interface gigabitethernet 0/0
+ip address 172.16.41.254 255.255.255.0 
+no shutdown 
+exit
+show interface gigabitethernet 0/0
+
+
+
+interface gigabitethernet 0/1
+ip address 172.16.1.49 255.255.255.0
+no shutdown
+exit
+show interface gigabitethernet 0/1
+
+-> rota estática
+
+ip route 0.0.0.0 0.0.0.0 172.16.1.254
+ip route 172.16.40.0 255.255.255.0 172.16.41.253
+
+configurar os ips
+
+(no tux43)
+
+ifconfig eth0 up
+ifconfig eth0 172.16.40.1/24
+ifconfig eth0
+
+(no tux44)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.254/24
+ifconfig eth0
+ifconfig eth1 up
+ifconfig eth1 172.16.41.253/24
+ifconfig eth1
+
+(no tux42)
+ifconfig eth0 up
+ifconfig eth0 172.16.41.1/24
+ifconfig eth0
+
+-> configurar as VLAN's
+
+(em qualquer tux) no gtkterm
+
+(na vlan40 fica o tux43 e tux44)
+
+configure terminal
+vlan 40
+end
+show vlan id 40
+
+configure terminal
+interface fastethernet 0/x (número da porta)
+switchport mode access
+switchport access vlan 40
+end
+show running-config interface fastethernet 0/1
+show interfaces fastethernet 0/1 switchport
+
+(na vlan41 fica o tux44,tux42 e o router)
+
+configure terminal
+vlan 41
+end
+show vlan id 41
+
+configure terminal
+interface fastethernet 0/x (número da porta)
+switchport mode access
+switchport access vlan 41
+end
+show running-config interface fastethernet 0/x
+show interfaces fastethernet 0/x switchport
+
+
+(no tux44)
+
+echo 1 > / proc / sys / net / ipv4 / ip_forward
+echo 0 > / proc / sys / net / ipv4 / icmp_echo_ignore_broadcasts
+
+
+-> adiconar rotas
+
+(no tux43)
+route add - net 172.16.41.0/24 gw 172.16.40.254
+
+(no tux42)
+route add - net 172.16.40.0/24 gw 172.16.41.253
+ping 172.16.40.1
+
+(no tux43)
+ping 172.16.41.1
+route add default gw 172.16.40.254
+
+(no tux42)
+route add - net 172.16.1.0/24 gw 172.16.41.254
+route add default gw 172.16.41.254
+
+(no tux44)
+route add - net 172.16.1.0/24 gw 172.16.41.254
+route add default gw 172.16.41.254
+
+route -n
+
+(no tux43) fazer no wireshark
+ping 172.16.40.254 # eth0 tux44
+ping 172.16.41.253 # eth1 tux44
+ping 172.16.41.1 # eth0 tux42
+ping 172.16.41.254 # eth0 Router
+ping 172.16.1.29 # eth1 Router
+
+(no tux42)
+echo 0 > / proc / sys / net / ipv4 / conf / eth0 / accept_redirects
+echo 0 > / proc / sys / net / ipv4 / conf / all / accept_redirects
+
+route -n
+route del - net 172.16.40.0/24 gw 172.16.41.253
+ping 172.16.40.1 # eth0 tux23
+
+ping 172.16.40.1 # eth0 tux23 (fazer no wireshark)
+traceroute 172.16.40.1 
+
+route add - net 172.16.40.0/24 gw 172.16.41.253
+traceroute 172.16.20.1 
+
+route -n
+route del - net 172.16.40.0/24 gw 172.16.41.253
+
+echo 1 > / proc / sys / net / ipv4 / conf / eth0 / accept_redirects
+echo 1 > / proc / sys / net / ipv4 / conf / all / accept_redirects
+
+(ligar a captura)
+
+ping 172.16.40.1 
+traceroute 172.16.40.1
+traceroute -l 172.16.40.1
+
+(acabar captura)
+
+(no tux43)
+ping 172.16.1.254
+(é suposto nao funcionar)
+
+--> implementar o nat
+
+conf t
+interface gigabitethernet 0/0
+ip address 172.16.41.254 255.255.255.0
+no shutdown
+ip nat inside
+exit
+
+interface gigabitethernet 0/1
+ip address 172.16.1.29 255.255.255.0
+no shutdown
+ip nat inside
+exit
+
+ip nat pool ovrld 172.16.1.29 172.16.1.29 prefix 24
+ip nat inside source list 1 pool vorld overload
+acess-list 1 permit 172.16.40.0 0.0.0.7
+acess-list 1 permit 172.16.41.0 0.0.0.7
+
+ip route 0.0.0.0 0.0.0.0 172.16.1.254
+ip route 172.16.40.0 255.255.255.0 172.16.41.253
+end
+
+ping 172.16.1.254
+
+
+
+
+
+
+
+
+
+

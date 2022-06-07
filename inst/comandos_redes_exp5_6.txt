@@ -1,0 +1,23 @@
+Exp5: DNS
+
+(só usar estes comandos se estiver tudo configurado com na experiencia 4)
+
+(fazer isto em todos os tuxs)
+search netlab.fe.up.pt
+nameserver 172.16.1.2
+
+ping ftp.up.pt
+
+(ligar o wireshark e capturar)
+ping ftp.up.pt
+ping google.com
+
+Exp6: TCP connections
+(esta é para fazer qnd tivermos a aplicação de download)
+(configurar a rede como se tem até agora)
+
+(no tux43)
+--> compilar o programa
+(começar wireshark)
+download ftp ://netlab1.fe.up.pt/pub.txt;
+(parar captura)

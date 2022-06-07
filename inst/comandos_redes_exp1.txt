@@ -1,0 +1,28 @@
+Exp1: configurar uma rede IP
+
+(ligar tux43 e tux44 ao switch)
+
+(no tux43)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.1/24
+ifconfig eth0
+(apontar endereço mac)
+
+(no tux44)
+ifconfig eth0 up
+ifconfig eth0 172.16.40.254/24
+ifconfig eth0
+(apontar endereço mac)
+
+(no tux43)
+ ping 172.16.40.254
+
+(no tux44)
+ping 172.16.40.1
+
+(no tux43)
+route -n
+arp -a
+arp -d 172.16.40.254
+arp -a    (não retorna nada)
+

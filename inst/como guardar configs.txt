@@ -1,0 +1,32 @@
+Como guardar configuraçoes no switch/router:
+
+-->executar reset no switch:
+(no gtkterm)
+
+enable
+configure terminal
+no vlan 2-4094
+exit
+copyflash:tux4-clean startup-config
+reload
+
+-->executar reset no router:
+(no gtkterm)
+
+enable
+copyflash:tux4-clean startup-config
+reload
+
+
+--> executar a sequencia de comandos para configurar o switch/router
+
+--> copiar configs para o ficheiro de configuração
+	
+	#> copy running-config flash<nome do ficheiro>
+
+--> executar comando sempre que quisermos usar as configs
+
+	#> copy flash<nome do ficheiro> running-config
+
+
+
