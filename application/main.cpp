@@ -1,22 +1,24 @@
 // ./app ftp:// netlab1.fe.up.pt/pub.txt
 // ./app ftp://rcom:rcom@netlab1.fe.up.pt/pipe.txt
 
-#include "stdio.h"
-#include "unistd.h"
-#include <regex.h>
-#include <stdlib.h>
-#include <string.h>
+// #include "stdio.h"
+// #include "unistd.h"
+// #include <regex.h>
+// #include <stdlib.h>
+// #include <string.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <libgen.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+// #include <fcntl.h>
+// #include <unistd.h>
+// #include <libgen.h>
+// #include <sys/socket.h>
+// #include <netdb.h>
+// #include <netinet/in.h>
+// #include <arpa/inet.h>
 
 #include "my_socket.h"
 #include "url.h"
+
+#include "application_info.h"
 
 #define SERVER_PORT 6000
 #define SERVER_ADDR "192.168.28.96"
@@ -72,8 +74,8 @@ int downloadFile(int sockfd, application_info *data)
 
     char file_name[256];
     strcpy(file_name, basename(data->file_path));
-    char read_buf[256];
-    int readb = 0;
+    char my_socket::read_buf[256];
+    int my_socket::readb = 0;
 
     int filefd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
 
@@ -83,10 +85,10 @@ int downloadFile(int sockfd, application_info *data)
         perror("OPEN:");
         return -1;
     }
-    while ((readb = read(sockfd, read_buf, 256)) > 0)
+    while ((my_socket::readb = my_socket::read(sockfd, my_socket::read_buf, 256)) > 0)
     {
-        printf("%s\n", read_buf);
-        write(filefd, read_buf, readb);
+        printf("%s\n", my_socket::read_buf);
+        write(filefd, my_socket::read_buf, my_socket::readb);
     }
 
     return close(filefd);
@@ -124,7 +126,7 @@ int main(int argc, char **argv)
     char reply[256];
     int r = 0;
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -135,10 +137,10 @@ int main(int argc, char **argv)
     strcpy(buf, "user "); // user write
     strcat(buf, data.user);
     strcat(buf, "\n");
-    write(sockfd, buf);
+    buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -150,10 +152,10 @@ int main(int argc, char **argv)
     strcpy(buf, "pass "); // password write
     strcat(buf, data.password);
     strcat(buf, "\n");
-    write(sockfd, buf);
+    buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -163,10 +165,10 @@ int main(int argc, char **argv)
     // pasv mode
     bzero(buf, 256);
     strcpy(buf, "pasv\n"); // pasv write
-    write(sockfd, buf);
+    buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -186,10 +188,10 @@ int main(int argc, char **argv)
     strcpy(buf, "retr ");
     strcat(buf, data.file_path);
     strcat(buf, "\n");
-    write(sockfd, buf);
+    buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -201,7 +203,7 @@ int main(int argc, char **argv)
     // download file on sockfd2
     downloadFile(sockfd2, &data);
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -213,10 +215,10 @@ int main(int argc, char **argv)
     bzero(buf, 256);
     strcpy(buf, "quit");
     strcat(buf, "\n");
-    write(sockfd, buf);
+    buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = read(sockfd, reply, buffer); // read
+    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
