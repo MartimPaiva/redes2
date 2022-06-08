@@ -1,23 +1,11 @@
 // ./app ftp:// netlab1.fe.up.pt/pub.txt
 // ./app ftp://rcom:rcom@netlab1.fe.up.pt/pipe.txt
 
-// #include "stdio.h"
-// #include "unistd.h"
-// #include <regex.h>
-// #include <stdlib.h>
-// #include <string.h>
+#include <netdb.h>
+#include <fcntl.h>
 
-// #include <fcntl.h>
-// #include <unistd.h>
-// #include <libgen.h>
-// #include <sys/socket.h>
-// #include <netdb.h>
-// #include <netinet/in.h>
-// #include <arpa/inet.h>
-
-#include "my_socket.h"
 #include "url.h"
-
+#include "my_socket.h"
 #include "application_info.h"
 
 #define SERVER_PORT 6000
@@ -68,57 +56,32 @@ int ipParser(char *reply)
     return atoi(first_byte) * 256 + atoi(second_byte); // port number
 }
 
-int downloadFile(int sockfd, application_info *data)
-{
-    printf("Writing to file\n");
-
-    char file_name[256];
-    strcpy(file_name, basename(data->file_path));
-    char my_socket::read_buf[256];
-    int my_socket::readb = 0;
-
-    int filefd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
-
-    printf("FILE FD: %d\n", filefd);
-    if (filefd == -1)
-    {
-        perror("OPEN:");
-        return -1;
-    }
-    while ((my_socket::readb = my_socket::read(sockfd, my_socket::read_buf, 256)) > 0)
-    {
-        printf("%s\n", my_socket::read_buf);
-        write(filefd, my_socket::read_buf, my_socket::readb);
-    }
-
-    return close(filefd);
-}
-
 int main(int argc, char **argv)
 {
-
+    my_socket socket;
+    url URL;
     if (argc != 2)
     {
         fprintf(stderr, "USE: download ftp://[<user>:<password>@]<host>/<url-path>\n");
         return -1;
     }
 
-    // validate url
-    if (validate(argv[1]) != 0)
+    // URL.validate url
+    if (URL.validate(argv[1]) != 0)
     {
         fprintf(stderr, "Invalid url\n");
         return -1;
     }
 
-    // parse url
+    // URL.parse url
     application_info data;
-    parse(argv[1], &data);
+    URL.parse(argv[1], &data);
 
     // hostname
     getHostName(&data);
 
-    // connect to host
-    int sockfd = connect(&data, 21);
+    // socket.server_connect to host
+    int sockfd = socket.server_connect(&data, 21);
 
     // user credentials
     char buf[256];
@@ -126,7 +89,7 @@ int main(int argc, char **argv)
     char reply[256];
     int r = 0;
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -137,10 +100,10 @@ int main(int argc, char **argv)
     strcpy(buf, "user "); // user write
     strcat(buf, data.user);
     strcat(buf, "\n");
-    buff_write(sockfd, buf);
+    socket.buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -152,10 +115,10 @@ int main(int argc, char **argv)
     strcpy(buf, "pass "); // password write
     strcat(buf, data.password);
     strcat(buf, "\n");
-    buff_write(sockfd, buf);
+    socket.buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -165,10 +128,10 @@ int main(int argc, char **argv)
     // pasv mode
     bzero(buf, 256);
     strcpy(buf, "pasv\n"); // pasv write
-    buff_write(sockfd, buf);
+    socket.buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -179,8 +142,8 @@ int main(int argc, char **argv)
     int port = ipParser(reply); // get port from pasv cmd
     printf("Port %d\n", port);
 
-    // connect to host
-    int sockfd2 = connect(&data, port);
+    // socket.server_connect to host
+    int sockfd2 = socket.server_connect(&data, port);
 
     // see what type of verification we can do in term_b message reply "]"
 
@@ -188,10 +151,10 @@ int main(int argc, char **argv)
     strcpy(buf, "retr ");
     strcat(buf, data.file_path);
     strcat(buf, "\n");
-    buff_write(sockfd, buf);
+    socket.buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -201,9 +164,9 @@ int main(int argc, char **argv)
     }
 
     // download file on sockfd2
-    downloadFile(sockfd2, &data);
+    socket.file_download(sockfd2, &data);
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);
@@ -215,10 +178,10 @@ int main(int argc, char **argv)
     bzero(buf, 256);
     strcpy(buf, "quit");
     strcat(buf, "\n");
-    buff_write(sockfd, buf);
+    socket.buff_write(sockfd, buf);
     printf("wrote to socket:%s\n", buf);
 
-    r = my_socket::read(sockfd, reply, buffer); // my_socket::read
+    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
     if (r >= 400)
     {
         fprintf(stderr, "Connection error with return code %d\n", r);

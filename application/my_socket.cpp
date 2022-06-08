@@ -1,5 +1,7 @@
 #include "my_socket.h"
 
+#define MAX_BUFFER_SIZE 256
+
 int my_socket::buff_write(int sockfd, char *buf)
 {
     if (write(sockfd, buf, strlen(buf)) < 0)
@@ -10,7 +12,7 @@ int my_socket::buff_write(int sockfd, char *buf)
     return 0;
 }
 
-int my_socket::read(int sockfd, char *buffer, char *reply)
+int my_socket::read_buffer(int sockfd, char *buffer, char *reply)
 {
     char server_response[4];
     size_t n = 0;
@@ -25,7 +27,7 @@ int my_socket::read(int sockfd, char *buffer, char *reply)
 
     buffer[100 - 1] = '\0';
     strncpy(server_response, buffer, 3);
-    server_response[4] = '\0';
+    server_response[3] = '\0';
 
     strcpy(reply, buffer);
 
@@ -59,4 +61,38 @@ int my_socket::server_connect(application_info *data, int port)
         exit(-1);
     }
     return sockfd;
+}
+
+/**
+ * @brief not done
+ *
+ * @param sockfd
+ * @param data
+ * @return int
+ */
+int my_socket::file_download(int sockfd, application_info *data)
+{
+    char file_name[MAX_BUFFER_SIZE];
+    strcpy(file_name, basename(data->file_path));
+    char buf[MAX_BUFFER_SIZE];
+    int readb = 0;
+
+    int file_descriptor = open(file_name, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
+
+    printf("FILE FD: %d\n", file_descriptor);
+    if (file_descriptor == -1)
+    {
+        perror("OPEN:");
+        return -1;
+    }
+    while ((readb = read(sockfd, buf, MAX_BUFFER_SIZE)) > 0)
+    {
+        printf("%s\n", buf);
+        if (write(file_descriptor, buf, readb) == -1)
+        {
+            return -1
+        }; // ssize_t write(int fildes, const void *buf, size_t nbytes);
+    }
+
+    return close(file_descriptor);
 }

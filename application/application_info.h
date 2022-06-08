@@ -1,4 +1,6 @@
-typedef struct
+#pragma once
+
+typedef struct _application_info
 {
     char user[256];
     char password[256];
