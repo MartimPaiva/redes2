@@ -1,6 +1,6 @@
 #include "my_socket.h"
 
-int my_socket::write(int sockfd, char *buf)
+int my_socket::buff_write(int sockfd, char *buf)
 {
     if (write(sockfd, buf, strlen(buf)) < 0)
     {
@@ -10,31 +10,31 @@ int my_socket::write(int sockfd, char *buf)
     return 0;
 }
 
-int my_socket::read(int sockfd, char *buf, char *buffer)
+int my_socket::read(int sockfd, char *buffer, char *reply)
 {
-    char code[4];
+    char server_response[4];
     size_t n = 0;
     ssize_t read;
 
-    FILE *fp = fdopen(sockfd, "r");
-    while ((read = getline(&buffer, &n, fp)) != -1)
+    FILE *file_pointer = fdopen(sockfd, "r");
+    while ((read = getline(&buffer, &n, file_pointer)) != -1)
     {
         if (buffer[3] == ' ')
             break;
     }
 
     buffer[100 - 1] = '\0';
-    strncpy(code, buffer, 3);
-    code[4] = '\0';
+    strncpy(server_response, buffer, 3);
+    server_response[4] = '\0';
 
-    strcpy(buf, buffer);
+    strcpy(reply, buffer);
 
-    printf("Reply message: %s\n", buf);
+    printf("Reply message: %s\n", reply);
 
-    return atoi(code);
+    return atoi(server_response);
 }
 
-int my_socket::connect(application_info *data, int port)
+int my_socket::server_connect(application_info *data, int port)
 {
     int sockfd;
     struct sockaddr_in server_addr;
