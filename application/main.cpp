@@ -4,193 +4,162 @@
 #include <netdb.h>
 #include <fcntl.h>
 
-#include "url.h"
+#include "info.h"
 #include "my_socket.h"
-#include "application_info.h"
 
-#define SERVER_PORT 6000
+#include <iostream>
+using namespace std;
+// using std::cout;
+
+#define MAXC 512
+#define PORT 6000
 #define SERVER_ADDR "192.168.28.96"
 
 // user, password, host, url path
+// ftp://[<user>:<password>@]<host>/<url-path>
 
-int getHostName(application_info *data)
+/**
+ * @brief Send user info to server to establish_connection
+ *
+ * @return int
+ */
+int establish_connection(info *user_info, my_socket *connection_socket)
 {
-    struct hostent *h;
 
-    if ((h = gethostbyname(data->host_name)) == NULL)
-    {
-        herror("gethostbyname()");
-        exit(-1);
-    }
+    connection_socket->server_connect(user_info, PORT);
 
-    strcpy(data->host_ip, inet_ntoa(*((struct in_addr *)h->h_addr)));
+    char aux_str[MAXC];
 
-    printf("Host name  : %s\n", h->h_name);
-    printf("IP Address : %s\n", data->host_ip);
+    sprintf(aux_str, "user %s \n", user_info->user);
+    SOCKET_SEND(connection_socket, aux_str);
+    SOCKET_RECIEVE(connection_socket);
+
+    sprintf(aux_str, "password %s \n", user_info->password);
+    SOCKET_SEND(connection_socket, aux_str);
+    SOCKET_RECIEVE(connection_socket);
 
     return 0;
 }
-/* ftp://[<user>:<password>@]<host>/<url-path>
-Ex  ftp://netlab1.fe.up.pt/pub.txt
-Ex  ftp://rcom:rcom@netlab1.fe.up.pt/pipe.txt
-*/
 
-int ipParser(char *reply)
+int close_connection(my_socket *socket)
 {
-    char res[256];
-    char first_byte[4];
-    char second_byte[4];
+    char aux_str[MAXC];
 
-    strtok(reply, "(");
-    strcpy(res, strtok(NULL, "("));
-    strcpy(res, strtok(res, ")"));
+    sprintf(aux_str, "quit\n");
+    SOCKET_SEND(socket, aux_str);
 
-    strtok(res, ",");
-    for (int i = 0; i < 3; i++)
-    {
-        strtok(NULL, ","); // ignore until last two numbers
-    }
+    socket->close_cn();
 
-    strcpy(first_byte, strtok(NULL, ","));
-    strcpy(second_byte, strtok(NULL, ","));
-    return atoi(first_byte) * 256 + atoi(second_byte); // port number
+    return 0;
+}
+
+int download_file_imp(info *user_info, my_socket *connection_socket, my_socket *download_socket)
+{
+    char aux_str[MAXC];
+
+    sprintf(aux_str, "pasv\n");
+    SOCKET_SEND(connection_socket, aux_str);
+    SOCKET_RECIEVE(connection_socket);
+
+    int download_port = connection_socket->pasv_port();
+    download_socket->server_connect(user_info, download_port);
+
+    sprintf(aux_str, "retr %s\n", user_info->file_path);
+    SOCKET_SEND(connection_socket, aux_str);
+    SOCKET_RECIEVE(connection_socket);
+
+    return download_socket->file_download(user_info);
 }
 
 int main(int argc, char **argv)
 {
-    my_socket socket;
-    url URL;
+    info user_info;
     if (argc != 2)
     {
-        fprintf(stderr, "USE: download ftp://[<user>:<password>@]<host>/<url-path>\n");
+        cout << "USE: download ftp://[<user>:<password>@]<host>/<url-path>\n";
         return -1;
     }
 
-    // URL.validate url
-    if (URL.validate(argv[1]) != 0)
+    if (user_info.read_commmand(argv[1]) == -1)
     {
-        fprintf(stderr, "Invalid url\n");
         return -1;
     }
 
-    // URL.parse url
-    application_info data;
-    URL.parse(argv[1], &data);
+    user_info.print();
 
-    // hostname
-    getHostName(&data);
-
-    // socket.server_connect to host
-    int sockfd = socket.server_connect(&data, 21);
-
-    // user credentials
-    char buf[256];
-    char buffer[256];
-    char reply[256];
-    int r = 0;
-
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
+    my_socket connection_socket, downlad_socket;
+    if (establish_connection(&user_info, &connection_socket) == -1)
     {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        exit(1);
+        return -1;
     }
 
-    strcpy(buf, "user "); // user write
-    strcat(buf, data.user);
-    strcat(buf, "\n");
-    socket.buff_write(sockfd, buf);
-    printf("wrote to socket:%s\n", buf);
-
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
+    if (download_file_imp(&user_info, &connection_socket, &downlad_socket) == -1)
     {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        exit(1);
+        return -1;
     }
 
-    bzero(buf, 256);
-    strcpy(buf, "pass "); // password write
-    strcat(buf, data.password);
-    strcat(buf, "\n");
-    socket.buff_write(sockfd, buf);
-    printf("wrote to socket:%s\n", buf);
-
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
+    if (close_connection(&downlad_socket) == -1)
     {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        exit(1);
-    }
-    // pasv mode
-    bzero(buf, 256);
-    strcpy(buf, "pasv\n"); // pasv write
-    socket.buff_write(sockfd, buf);
-    printf("wrote to socket:%s\n", buf);
-
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
-    {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        exit(1);
+        cout << "error";
     }
 
-    int port = ipParser(reply); // get port from pasv cmd
-    printf("Port %d\n", port);
-
-    // socket.server_connect to host
-    int sockfd2 = socket.server_connect(&data, port);
-
-    // see what type of verification we can do in term_b message reply "]"
-
-    bzero(buf, 256);
-    strcpy(buf, "retr ");
-    strcat(buf, data.file_path);
-    strcat(buf, "\n");
-    socket.buff_write(sockfd, buf);
-    printf("wrote to socket:%s\n", buf);
-
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
+    if (close_connection(&connection_socket) == -1)
     {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        close(sockfd2);
-        exit(1);
+        return -1;
     }
 
-    // download file on sockfd2
-    socket.file_download(sockfd2, &data);
+    // int port = pasv_port(socket1.last_reply); // get port from pasv cmd
+    // printf("Port %d\n", port);
 
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
-    {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        close(sockfd2);
-        exit(1);
-    }
-    // close sockfd socket
-    bzero(buf, 256);
-    strcpy(buf, "quit");
-    strcat(buf, "\n");
-    socket.buff_write(sockfd, buf);
-    printf("wrote to socket:%s\n", buf);
+    // // socket.server_connect to host
+    // int sockfd2 = socket2.server_connect(&data, port);
 
-    r = socket.read_buffer(sockfd, reply, buffer); // socket.read_buffer
-    if (r >= 400)
-    {
-        fprintf(stderr, "Connection error with return code %d\n", r);
-        close(sockfd);
-        close(sockfd2);
-        exit(1);
-    }
+    // // see what type of verification we can do in term_b message reply "]"
 
-    close(sockfd);
-    close(sockfd2);
+    // bzero(buf, 256);
+    // strcpy(buf, "retr ");
+    // strcat(buf, data.file_path);
+    // strcat(buf, "\n");
+    // socket1.send_message(sockfd1, buf);
+    // printf("wrote to socket:%s\n", buf);
+
+    // r =  socket1.recieve(sockfd1, reply, buffer); // socket.read_buffer
+    // if (r >= 400)
+    // {
+    //     fprintf(stderr, "Connection error with return code %d\n", r);
+    //     close(sockfd1);
+    //     close(sockfd2);
+    //     exit(1);
+    // }
+
+    // // download file on sockfd2
+    // socket2.file_download(sockfd2, &data);
+
+    // r =  socket1.recieve(sockfd1, reply, buffer); // socket.read_buffer
+    // if (r >= 400)
+    // {
+    //     fprintf(stderr, "Connection error with return code %d\n", r);
+    //     close(sockfd1);
+    //     close(sockfd2);
+    //     exit(1);
+    // }
+    // // close sockfd socket
+    // bzero(buf, 256);
+    // strcpy(buf, "quit");
+    // strcat(buf, "\n");
+    // socket1.send_message(sockfd1, buf);
+    // printf("wrote to socket:%s\n", buf);
+
+    // r =  socket1.recieve(sockfd1, reply, buffer); // socket.read_buffer
+    // if (r >= 400)
+    // {
+    //     fprintf(stderr, "Connection error with return code %d\n", r);
+    //     close(sockfd1);
+    //     close(sockfd2);
+    //     exit(1);
+    // }
+
+    // close(sockfd1);
+    // close(sockfd2);
     return 0;
 }

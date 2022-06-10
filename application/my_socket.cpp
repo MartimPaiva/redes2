@@ -1,98 +1,187 @@
 #include "my_socket.h"
 
 #define MAX_BUFFER_SIZE 256
-
-int my_socket::buff_write(int sockfd, char *buf)
+/**
+ * @brief not completed
+ *
+ * @param user_info
+ * @param port
+ * @return int
+ */
+int my_socket::server_connect(info *user_info, int port)
 {
-    if (write(sockfd, buf, strlen(buf)) < 0)
-    {
-        perror("write()");
-        exit(-1);
-    }
-    return 0;
-}
-
-int my_socket::read_buffer(int sockfd, char *buffer, char *reply)
-{
-    char server_response[4];
-    size_t n = 0;
-    ssize_t read;
-
-    FILE *file_pointer = fdopen(sockfd, "r");
-    while ((read = getline(&buffer, &n, file_pointer)) != -1)
-    {
-        if (buffer[3] == ' ')
-            break;
-    }
-
-    buffer[100 - 1] = '\0';
-    strncpy(server_response, buffer, 3);
-    server_response[3] = '\0';
-
-    strcpy(reply, buffer);
-
-    printf("Reply message: %s\n", reply);
-
-    return atoi(server_response);
-}
-
-int my_socket::server_connect(application_info *data, int port)
-{
-    int sockfd;
     struct sockaddr_in server_addr;
 
     /*server address handling*/
     bzero((char *)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(data->host_ip); /*32 bit Internet address network byte ordered*/
-    server_addr.sin_port = htons(port);                     /*server TCP port must be network byte ordered */
+    server_addr.sin_addr.s_addr = inet_addr(user_info->host_ip); /*32 bit Internet address network byte ordered*/
+    server_addr.sin_port = htons(port);                          /*server TCP port must be network byte ordered */
 
     /*open a TCP socket*/
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((server_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
-        perror("socket()");
-        exit(-1);
+        cout << "Error connection to the server \n";
+        return -1;
     }
-    // printf("socket ready\n");
-    /*connect to the server*/
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    if (connect(server_descriptor, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        perror("connect()");
-        exit(-1);
+
+        cout << "Error connection to the server\n";
+        return -1;
     }
-    return sockfd;
+    if (open_cn() == -1)
+    {
+        cout << "Error connection to the server\n";
+        return -1;
+    }
+    cout << "Socket connect to the server\n";
+    open_cn();
+
+    return 1;
+}
+/**
+ * @brief read from socket buffer and returns the server http response number
+ *
+ * @return int server_response
+ */
+int my_socket::recieve()
+{
+    open_cn();
+
+    char server_response[4] = {};
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, file_pointer)) != -1)
+    {
+        if (line[3] == ' ')
+        {
+            strncpy(server_response, line, 3);
+            server_response[3] = '\0';
+
+            free(line);
+            break;
+        }
+    }
+    fclose(file_pointer);
+
+    int response_code = atoi(server_response);
+
+    if (response_code > 399)
+    {
+        close_cn();
+        return -1;
+    }
+}
+/**
+ * @brief Send message to the server throw the socket
+ *
+ * @param input
+ * @return -1: error; 0: sucess;
+ */
+int my_socket::send_message(char *input)
+{
+
+    if (write(server_descriptor, input, strlen(input)) == -1)
+    {
+        close_cn();
+        return -1;
+    }
+    return 0;
 }
 
 /**
- * @brief not done
+ * @brief done, not tested
  *
- * @param sockfd
+ * @param server_descriptor
  * @param data
  * @return int
  */
-int my_socket::file_download(int sockfd, application_info *data)
+int my_socket::file_download(info *user_info)
 {
-    char file_name[MAX_BUFFER_SIZE];
-    strcpy(file_name, basename(data->file_path));
-    char buf[MAX_BUFFER_SIZE];
-    int readb = 0;
+    int downloaded_file_descriptor = open(basename(user_info->file_path), O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
 
-    int file_descriptor = open(file_name, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
-
-    printf("FILE FD: %d\n", file_descriptor);
-    if (file_descriptor == -1)
+    if (downloaded_file_descriptor == -1)
     {
-        perror("OPEN:");
+        close_cn();
         return -1;
     }
-    while ((readb = read(sockfd, buf, MAX_BUFFER_SIZE)) > 0)
+
+    int write_success = 0;
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, this->file_pointer)) != -1)
     {
-        printf("%s\n", buf);
-        if (write(file_descriptor, buf, readb) == -1)
+        if (write(downloaded_file_descriptor, line, len) == -1)
         {
-            return -1
-        }; // ssize_t write(int fildes, const void *buf, size_t nbytes);
+            write_success = -1;
+            close_cn();
+            break;
+        };
+    }
+    free(line);
+    close(downloaded_file_descriptor);
+
+    return write_success;
+}
+/**
+ * @brief não está acabado
+ *
+ * @return int
+ */
+int my_socket::pasv_port()
+{
+    if (!last_reply)
+    {
+        return -1;
     }
 
-    return close(file_descriptor);
+    cout << last_reply;
+
+    char res[256];
+    char first_byte[4];
+    char second_byte[4];
+
+    strtok(last_reply, "(");
+    strcpy(res, strtok(NULL, "("));
+    strcpy(res, strtok(res, ")"));
+
+    strtok(res, ",");
+    for (int i = 0; i < 3; i++)
+    {
+        strtok(NULL, ","); // ignore until last two numbers
+    }
+
+    strcpy(first_byte, strtok(NULL, ","));
+    strcpy(second_byte, strtok(NULL, ","));
+    return atoi(first_byte) * 256 + atoi(second_byte); // port number
+}
+/**
+ * @brief close the socket connection
+ *
+ */
+void my_socket::close_cn()
+{
+    close(server_descriptor);
+}
+
+/**
+ * @brief open the socket connection
+ *
+ */
+int my_socket::open_cn()
+{
+    file_pointer = fdopen(server_descriptor, "r");
+
+    if (file_pointer == NULL)
+    {
+        cout << "Error opening connection \n";
+        return -1;
+    }
+
+    return 0;
 }
