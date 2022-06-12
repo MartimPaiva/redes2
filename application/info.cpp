@@ -83,7 +83,7 @@ void credentials_aux(char *field, char *command, const char *rejected, size_t *f
 void info::credential_manager(char *command) {
   //   cout << "example: ./app download ftp://netlab1.fe.up.pt/pub.txt";
   size_t field_len;
-
+//se nao houver user entramos em anonymous
   if (!command) {
     strcpy(user, "anonymous");
     strcpy(password, "anonymous");
@@ -161,7 +161,7 @@ int validate_command(char *string) {
   regfree(&preg);
   return 0;
 }
-
+//User, password, host name and ip, file
 void info::print() {
   if (user)
     printf("User: %s\n", user);
