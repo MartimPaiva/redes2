@@ -60,10 +60,12 @@ int establish_connection(info *user_info, my_socket *connection_socket) {
 
   sprintf(aux_str, "user %s \n", user_info->user);
   SOCKET_SEND(connection_socket, aux_str);
+  sleep(0.1);
   SOCKET_RECIEVE(connection_socket);
 
   sprintf(aux_str, "password %s \n", user_info->password);
   SOCKET_SEND(connection_socket, aux_str);
+  sleep(0.1);
   SOCKET_RECIEVE(connection_socket);
 
   return 0;
