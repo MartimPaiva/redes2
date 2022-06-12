@@ -1,6 +1,24 @@
 #include "my_socket.h"
 
 #define MAX_BUFFER_SIZE 256
+
+/**
+ * @brief close the socket connection
+ *
+ */
+my_socket::~my_socket() {
+  if (connected == false)
+    return;
+
+  if (file_descriptor != -1) {
+    char aux_str[] = "quit\n";
+    send_message(aux_str);
+
+    fclose(file_pointer);
+    close(file_descriptor);
+  }
+}
+
 /**
  * @brief not completed
  *
@@ -11,32 +29,25 @@
 int my_socket::server_connect(info *user_info, int port) {
   struct sockaddr_in server_addr;
 
-  /*server address handling*/
   bzero((char *)&server_addr, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = inet_addr(user_info->host_ip); /*32 bit Internet address network byte ordered*/
   server_addr.sin_port = htons(port);                          /*server TCP port must be network byte ordered */
 
-  // opening a TCP socket
-  if ((server_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    cout << "Error creating a new socket \n";
-    cout << "Error in my_socket::server_connect(info *user_info, int port) \n";
+  if ((file_descriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    perror("socket()");
     return -1;
   }
-  if (connect(server_descriptor, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+  if (connect(file_descriptor, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    perror("connect()");
+    return -1;
+  }
+  // FUNCTION_ERROR_CONTROL((server_descriptor = socket(AF_INET, SOCK_STREAM, 0)), -1)
+  // FUNCTION_ERROR_CONTROL(connect(server_descriptor, (struct sockaddr *)&server_addr, sizeof(server_addr)), -1)
+  // FUNCTION_ERROR_CONTROL(open_cn(), -1)
+  FUNCTION_ERROR_CONTROL(send_message("wake up server"), -1)
 
-    cout << "Error connection to the server\n";
-    cout << "Error in my_socket::server_connect(info *user_info, int port) \n";
-    return -1;
-  }
-  if (open_cn() == -1) {
-    cout << "Error in my_socket::server_connect(info *user_info, int port) \n";
-    return -1;
-  }
-  cout << "Socket connect to the server\n";
-  open_cn();
-
-  return 1;
+  return 0;
 }
 /**
  * @brief read from socket buffer and returns the server http response number
@@ -44,13 +55,14 @@ int my_socket::server_connect(info *user_info, int port) {
  * @return int server_response
  */
 int my_socket::recieve() {
-  open_cn();
-
   char server_response[4] = {};
 
   char *line = NULL;
   size_t len = 0;
+
   ssize_t read;
+  file_pointer = fdopen(file_descriptor, "r");
+  // cout << "---begin received--- \n";
   while ((read = getline(&line, &len, file_pointer)) != -1) {
     cout << line << "---received " << endl;
     if (line[3] == ' ') {
@@ -60,12 +72,14 @@ int my_socket::recieve() {
       free(line);
       break;
     }
+    fclose(file_pointer);
   }
-  fclose(file_pointer);
+  // cout << "---end received---\n ";
 
   int response_code = atoi(server_response);
 
   if (response_code > 399) {
+    cout << "Status code error \n";
     return -1;
   }
   return 0;
@@ -86,12 +100,14 @@ int my_socket::send_message(char *input) {
     cout << "Empty message at send_message(char *input) " << endl;
     return -1;
   }
-  if (write(server_descriptor, input, strlen(input)) == -1) {
+
+  if (write(this->file_descriptor, input, strlen(input)) < 0) {
     cout << "\nError writing input to server ( write(server_descriptor, input, strlen(input) == -1)" << endl;
     cout << "Probably invalid server_descriptor" << endl;
-    cout << "Server descriptor: " << server_descriptor << endl;
+    cout << "Server descriptor: " << file_descriptor << endl;
     return -1;
   }
+  cout << "message send: '" << input << "'\n";
   return 0;
 }
 /**
@@ -134,6 +150,7 @@ int my_socket::pasv_port() {
     cout << "Error sending pasv\\n to server" << endl;
     return -1;
   }
+  recieve();
   if (!last_reply) {
     cout << "NULL last reply" << endl;
     return -1;
@@ -163,19 +180,13 @@ int my_socket::pasv_port() {
   return atoi(first_byte) * 256 + atoi(second_byte); // port number
 }
 /**
- * @brief close the socket connection
+ * @brief Creates a new socket  with the specified name.
+ * @param _name The name of the socket.
  *
  */
-my_socket::~my_socket() {
-  if (connected == false)
-    return;
-
-  if (server_descriptor != -1) {
-    char aux_str[] = "quit\n";
-    send_message(aux_str);
-
-    close(server_descriptor);
-  }
+my_socket::my_socket(const char *_name) {
+  // TEST_C_LIKE_STRING(_name, ;)
+  strcpy(name, _name);
 }
 
 /**
@@ -183,7 +194,7 @@ my_socket::~my_socket() {
  *
  */
 int my_socket::open_cn() {
-  file_pointer = fdopen(server_descriptor, "r");
+  file_pointer = fdopen(file_descriptor, "r");
 
   if (file_pointer == NULL) {
     cout << "Error opening connection \n";
@@ -194,6 +205,6 @@ int my_socket::open_cn() {
 }
 
 void my_socket::print_info() {
-  cout << "Socket" << this->name << "info" << endl;
-  cout << "Server descriptor: " << server_descriptor << endl;
+  cout << "Socket" << name << "info" << endl;
+  cout << "Server descriptor: " << file_descriptor << endl;
 }

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include "debug.h"
 #include "info.h"
 
 #include <iostream>
@@ -18,7 +19,7 @@ using namespace std;
 #define SOCKET_RECIEVE(socket_name)                                   \
   {                                                                   \
     if (socket_name->recieve() == -1) {                               \
-      cout << "Error in socket recieve SOCKET_RECIEVE(socket_name) "; \
+      cout << "Error in socket recieve" << socket_name->name << endl; \
       return -1;                                                      \
     }                                                                 \
   }
@@ -40,8 +41,11 @@ private:
   bool connected = false;
 
 public:
-  int server_descriptor = -1;
-  char name[32];
+  my_socket(const char *_name);
+  ~my_socket();
+
+  int file_descriptor = -1;
+  char name[32] = "generic_socket_name";
   void print_info();
 
   int server_connect(info *user_info, int port);
@@ -51,7 +55,6 @@ public:
 
   int file_download(info *user_info);
   int open_cn();
-  ~my_socket();
 };
 
 #endif
