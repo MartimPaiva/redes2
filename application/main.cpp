@@ -51,7 +51,10 @@ int test_input(int argc, char **argv, int *prentended_argument) {
  */
 int establish_connection(info *user_info, my_socket *connection_socket) {
 
-  connection_socket->server_connect(user_info, PORT);
+  cout << "\n Establishing conncection to server...  " << endl;
+  FUNCTION_ERROR_CONTROL(connection_socket->server_connect(user_info, PORT), -1)
+  // connection_socket->server_connect(user_info, PORT);
+  connection_socket->print_info();
 
   char aux_str[MAXC];
 
@@ -95,8 +98,8 @@ int main(int argc, char **argv) {
 
   my_socket connection_socket, downlad_socket;
 
-  FUNCTION_ERROR_CONTROL(download_file_imp(&user_info, &connection_socket, &downlad_socket), 0);
   FUNCTION_ERROR_CONTROL(establish_connection(&user_info, &connection_socket), 0);
+  FUNCTION_ERROR_CONTROL(download_file_imp(&user_info, &connection_socket, &downlad_socket), 0);
 
   return 0;
 }

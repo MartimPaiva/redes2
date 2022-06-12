@@ -89,6 +89,7 @@ int my_socket::send_message(char *input) {
   if (write(server_descriptor, input, strlen(input)) == -1) {
     cout << "\nError writing input to server ( write(server_descriptor, input, strlen(input) == -1)" << endl;
     cout << "Probably invalid server_descriptor" << endl;
+    cout << "Server descriptor: " << server_descriptor << endl;
     return -1;
   }
   return 0;
@@ -166,6 +167,9 @@ int my_socket::pasv_port() {
  *
  */
 my_socket::~my_socket() {
+  if (connected == false)
+    return;
+
   if (server_descriptor != -1) {
     char aux_str[] = "quit\n";
     send_message(aux_str);
@@ -187,4 +191,9 @@ int my_socket::open_cn() {
   }
 
   return 0;
+}
+
+void my_socket::print_info() {
+  cout << "Socket" << this->name << "info" << endl;
+  cout << "Server descriptor: " << server_descriptor << endl;
 }

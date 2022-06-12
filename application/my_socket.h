@@ -37,10 +37,12 @@ class my_socket {
 private:
   FILE *file_pointer;
   char last_reply[512] = {};
+  bool connected = false;
 
 public:
   int server_descriptor = -1;
   char name[32];
+  void print_info();
 
   int server_connect(info *user_info, int port);
   int recieve();
