@@ -1,28 +1,35 @@
 #pragma once
 
 #include "stdio.h"
-#include <string.h>
-#include <stdlib.h>
 #include <regex.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
-class info
-{
+#include <iostream>
+using namespace std;
+
+class info {
 private:
-    int validate(char *arg);
-    int get_host_ip();
+  int get_host_ip();
+  void credential_manager(char *command);
+  bool validate_aux = true;
 
 public:
-    char user[256];
-    char password[256];
-    char host_name[256];
-    char host_ip[256];
-    char file_path[256];
+  info(char *url);
+  ~info();
+  void print();
+  int validate();
 
-    int read_commmand(char *url);
-    void print();
+  char user[512] = {};
+  char password[512] = {};
+  char host_name[512] = {};
+  char host_ip[512] = "Not def yet";
+  char file_name[512] = {};
 };
+
+int validate_command(char *arg);
