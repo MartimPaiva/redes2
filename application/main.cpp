@@ -10,7 +10,7 @@ using namespace std;
 // using std::cout;
 
 #define MAXC 1024
-#define PORT 6000
+#define PORT 21
 #define SERVER_ADDR "192.168.28.96"
 
 int test_input(int argc, char **argv, int *prentended_argument) {
